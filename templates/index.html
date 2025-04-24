@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Web App</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js for Histograms -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center text-primary mb-4">Machine Learning Web App</h1>
+        <p class="lead text-center">Upload a CSV file, specify the target column, and train machine learning models.</p>
+
+        <!-- File Upload Form -->
+        <form method="POST" enctype="multipart/form-data" class="mb-5">
+            <div class="mb-3">
+                <label for="file" class="form-label">Upload CSV File:</label>
+                <input type="file" name="file" id="file" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="target_column" class="form-label">Target Column Name:</label>
+                <input type="text" name="target_column" id="target_column" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Train Models</button>
+        </form>
+
+        <!-- Dataset Preview -->
+            {% if dataset_preview %}
+              <div class="text-center mt-5">
+                   <h2>Uploaded Dataset Preview</h2>
+                   <p>This is a preview of the first 5 rows of your uploaded dataset:</p>
+                  <div style="overflow-x: auto;">
+               <table class="table table-bordered mx-auto" style="max-width: 800px;">
+            {{ dataset_preview | safe }}
+                   </table>
+              </div>
+            </div>
+            {% endif %}
+
+        <!-- Model Performance Comparison Table -->
+        {% if results %}
+        <h2 class="mt-5">Model Performance Comparison</h2>
+        <p>Below is a summary of the performance metrics (R-squared, RMSE, MAE, MAPE) for all trained models:</p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>R-squared</th>
+                    <th>RMSE</th>
+                    <th>MAE</th>
+                    <th>MAPE (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result.model }}</td>
+                    <td>{{ result.r2 }}</td>
+                    <td>{{ result.rmse }}</td>
+                    <td>{{ result.mae }}</td>
+                    <td>{{ result.mape }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Detailed Results Section -->
+        {% if results %}
+        <h2 class="mt-5">Detailed Model Results</h2>
+        <p>Below are the evaluation metrics (R-squared, RMSE, MAE, MAPE), sample predictions, and error percentages for each trained model:</p>
+        {% for result in results %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">{{ result.model }}</h3>
+            </div>
+            <div class="card-body">
+                <p><strong>R-squared:</strong> {{ result.r2 }}, <strong>RMSE:</strong> {{ result.rmse }}, <strong>MAE:</strong> {{ result.mae }}, <strong>MAPE (%):</strong> {{ result.mape }}</p>
+                <p><strong>Sample Predictions:</strong></p>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Actual</th>
+                            <th>Predicted</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for actual, predicted in result.sample_predictions %}
+                        <tr>
+                            <td>{{ actual }}</td>
+                            <td>{{ predicted }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p><strong>How It Works:</strong></p>
+                <ul>
+                    {% if result.model == 'Linear Regression' %}
+                    <li>Linear Regression fits a straight line to the data by minimizing the sum of squared errors. It assumes a linear relationship between features and the target variable.</li>
+                    {% elif result.model == 'Random Forest' %}
+                    <li>Random Forest builds multiple decision trees and averages their predictions to reduce overfitting. It handles non-linear relationships well and is robust to noise.</li>
+                    {% elif result.model == 'Ridge Regression' %}
+                    <li>Ridge Regression adds an L2 penalty to the coefficients to prevent overfitting in high-dimensional data. It shrinks coefficients but does not set them to zero.</li>
+                    {% elif result.model == 'Lasso Regression' %}
+                    <li>Lasso Regression adds an L1 penalty to shrink some coefficients to zero, performing feature selection. It is useful when only a few features are relevant.</li>
+                    {% elif result.model == 'Neural Network (MLP)' %}
+                    <li>Neural Networks use layers of neurons with activation functions to model complex non-linear relationships. They are powerful for large datasets with intricate patterns.</li>
+                    {% elif result.model == 'K-Nearest Neighbors (KNN)' %}
+                    <li>KNN predicts based on the average of the k-nearest neighbors in the feature space. It is simple and effective for small datasets with clear local patterns.</li>
+                    {% elif result.model == 'Decision Tree' %}
+                    <li>Decision Trees split the data recursively based on feature values to make predictions. They are easy to interpret and visualize.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Combined Histogram for All Algorithms -->
+        {% if histograms_combined %}
+        <h2 class="mt-5">Combined Prediction Distribution</h2>
+        <p>Below is a histogram showing the distribution of actual vs. predicted values for all models:</p>
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">All Models</h3>
+            </div>
+            <div class="card-body">
+                <canvas id="combined_histogram" width="800" height="400"></canvas>
+            </div>
+        </div>
+        <script>
+            // Parse combined histogram data from Flask backend
+            const histogramsCombined = {{ histograms_combined | tojson | safe }};
+
+            // Render combined histogram using Chart.js
+            const ctx = document.getElementById('combined_histogram').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: histogramsCombined.model_labels, // Model names as labels
+                    datasets: [
+                        {
+                            label: 'Actual',
+                            data: histogramsCombined.actual,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Predicted',
+                            data: histogramsCombined.predicted,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || '';
+                                    return `${label}: ${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-3 bg-light mt-5">
+        <p class="mb-0"> Made with ❤️ by Ai Man Leap </p>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
