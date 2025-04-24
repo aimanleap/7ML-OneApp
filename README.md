@@ -52,19 +52,6 @@ Open your browser and navigate to http://127.0.0.1:5000.
     Specify the target column name.
     Click "Train Models" to see the results.
       
-### Project **Structure**  
-7ML-OneApp/
-│
-├── app.py                     # Flask application file
-├── requirements.txt            # List of Python dependencies
-├── README.md                   # Project description and instructions
-├── static/                     # Static files (CSS, JS, etc.)
-│   └── styles.css              # Custom CSS file
-├── templates/                  # HTML templates
-│   └── index.html              # Main HTML template
-├── uploads/                    # Folder for uploaded files (ignored in .gitignore)
-└── .gitignore                  # Specifies files/folders to ignore
-
 
 ### Contributing  
 
